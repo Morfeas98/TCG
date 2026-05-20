@@ -3,7 +3,7 @@ from bs4 import BeautifulSoup
 import csv
 
 # Step 1: Send a GET request to the URL
-url = 'https://world.digimoncard.com/cards/?search=true&category=522033'
+url = 'https://world.digimoncard.com/cards/?search=true&category=522036'
 response = requests.get(url)
 html_content = response.content
 
@@ -16,6 +16,7 @@ cards = soup.select('.image_lists_item')
 
 keywords = []
 final_card_list = []
+final_card_list_alt_art = []
 
 # Step 4: Reformat Cards Data
 for card in cards:
@@ -41,12 +42,14 @@ for card in cards:
 
     # 4.3 Card Name
         # Extract
-        card_name = card.select('.cardTitle')
+        card_name = card.select_one('.cardTitle')
+        # print(card_name)
         # Reformat
         html_element, name = str(card_name).rsplit('cardTitle">', 1)
         name = name.split('</div>')[0]
         name = name.strip()
         # print(name)
+
 
     # 4.4   Card Color
         # Extract
@@ -113,22 +116,37 @@ for card in cards:
             art = 'Basic Art'
         # print(art)
 
-    # 4.10  cardInfoTit - cardInfoData Pairs
+    # 4.10  DUAL Effect Title
+        # Extract
+        dual_name = card.select('.dualCardCol .cardTitleCol .cardTitle')
+        # print(dual_name)
+        # Reformat
+        if dual_name != [] :
+            html_element, dualname = str(dual_name).rsplit('cardTitle">', 1)
+            dualname = dualname.split('</div>')[0]
+            dualname = dualname.strip()
+        else :
+            dualname = '-'
+        # print(dualname)
+
+    # 4.12  cardInfoTit - cardInfoData Pairs
         info_pairs = {}
         for dt in card.find_all('dt', class_= 'cardInfoTit'):
             label = dt.get_text(strip=True)
             dd = dt.find_next_sibling('dd', class_='cardInfoData')
             if dd:
                 info_pairs[label] = dd.get_text(strip=True)
-        # print(labels)
+        # print(label)
 
         form = info_pairs.get('Form', '-')
         attribute = info_pairs.get('Attribute', '-')
         type = info_pairs.get('Type', '-')
         dp = info_pairs.get('DP', '-')
         cost = info_pairs.get('Cost', '-')
-        dcost1 = info_pairs.get('Digivolve Cost 1', '-')
-        dcost2 = info_pairs.get('Digivolve Cost 2', '-')
+        digicost1 = info_pairs.get('Digivolve Cost 1', '-')
+        digicost2 = info_pairs.get('Digivolve Cost 2', '-')
+        dualcolor = info_pairs.get('DUAL Color', '-')
+        dualcost = info_pairs.get('DUAL Cost', '-')
         pack = info_pairs.get('Notes', '-').strip('CARD LISTPRODUCTS')
 
         # print(info_pairs)
@@ -149,6 +167,8 @@ for card in cards:
         spdcost = info_pairs_small.get('[Special Digivolution Condition]', '-')
         spplcond = info_pairs_small.get('[Special Play Condition]', '-')
         effect = info_pairs_small.get('[Effect]', '-')
+        dualeffect = info_pairs_small.get('[DUAL Effect]', '-')
+        dualrule = info_pairs_small.get('[DUAL Rule]', '-')
         ieffect = info_pairs_small.get('[Inherited Effect]', '-')
         seffect = info_pairs_small.get('[Security Effect]', '-')
         linkcond = info_pairs_small.get('[Link Condition]', '-')
@@ -170,11 +190,16 @@ for card in cards:
         final_card.append(type)
         final_card.append(dp)
         final_card.append(cost)
-        final_card.append(dcost1)
-        final_card.append(dcost2)
+        final_card.append(digicost1)
+        final_card.append(digicost2)
         final_card.append(spdcost)
         final_card.append(spplcond)
         final_card.append(effect)
+        final_card.append(dualname)
+        final_card.append(dualcolor)
+        final_card.append(dualcost)
+        final_card.append(dualeffect)
+        final_card.append(dualrule)
         final_card.append(ieffect)
         final_card.append(seffect)
         final_card.append(linkcond)
@@ -184,9 +209,22 @@ for card in cards:
 
         # print(final_card)
 
-        final_card_list.append(final_card)
+        if art == 'Basic Art':
+            final_card_list.append(final_card)
+        else:
+            final_card_list_alt_art.append(final_card)
 
 
+csv_file = 'card_list.csv'
+with open(csv_file, mode='w', newline='', encoding='utf-8') as file:
+    writer = csv.writer(file)
+    for j in range(len(final_card_list)):
+        writer.writerow(final_card_list[j])
+    writer.writerow('\n')
+    for k in range(len(final_card_list_alt_art)):
+        writer.writerow(final_card_list_alt_art[k])
+
+print(f'Data has been written to {csv_file}')
 
 
 
@@ -223,16 +261,16 @@ for card in cards:
     # }
 
     # 5.0   Keyword Check
-        info_tit = (card.find_all('dt', class_='cardInfoTit'))
-        info_tit = [dt.get_text(strip=True) for dt in info_tit if dt.get_text(strip=True)]
-        info_tit_small = (card.find_all('dt', class_='cardInfoTitSmall'))
-        info_tit_small = [dt.get_text(strip=True) for dt in info_tit_small if dt.get_text(strip=True)]
-        info_title = '/'.join(info_tit) + '/' + '/'.join(info_tit_small)
-
-        keyword_check = info_title.split('/')
-        for keyword in keyword_check :
-            if keyword not in keywords:
-                keywords.append(keyword)
+    #     info_tit = (card.find_all('dt', class_='cardInfoTit'))
+    #     info_tit = [dt.get_text(strip=True) for dt in info_tit if dt.get_text(strip=True)]
+    #     info_tit_small = (card.find_all('dt', class_='cardInfoTitSmall'))
+    #     info_tit_small = [dt.get_text(strip=True) for dt in info_tit_small if dt.get_text(strip=True)]
+    #     info_title = '/'.join(info_tit) + '/' + '/'.join(info_tit_small)
+    #
+    #     keyword_check = info_title.split('/')
+    #     for keyword in keyword_check :
+    #         if keyword not in keywords:
+    #             keywords.append(keyword)
         # print(info_title)
         # print(keyword_check)
         # print(keywords)
@@ -240,4 +278,4 @@ for card in cards:
         # print("card added")
 
 
-print(final_card_list)
+# print(final_card_list)
